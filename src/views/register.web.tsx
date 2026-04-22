@@ -13,6 +13,7 @@ interface RegisterPageProps {
 interface FormState {
   name: string;
   email: string;
+  phone: string;
   password: string;
   confirmPassword: string;
 }
@@ -20,6 +21,7 @@ interface FormState {
 interface ErrorState {
   name: string;
   email: string;
+  phone: string;
   password: string;
   confirmPassword: string;
 }
@@ -28,12 +30,14 @@ export function RegisterPage({ onSuccess, onLogin }: RegisterPageProps) {
   const [form, setForm] = useState<FormState>({
     name: "",
     email: "",
+    phone: "",
     password: "",
     confirmPassword: "",
   });
   const [errors, setErrors] = useState<ErrorState>({
     name: "",
     email: "",
+    phone: "",
     password: "",
     confirmPassword: "",
   });
@@ -58,6 +62,7 @@ export function RegisterPage({ onSuccess, onLogin }: RegisterPageProps) {
       setErrors({
         name: validationErrors.name || "",
         email: validationErrors.email || "",
+        phone: validationErrors.phone || "",
         password: validationErrors.password || "",
         confirmPassword: validationErrors.confirmPassword || "",
       });
@@ -122,6 +127,23 @@ export function RegisterPage({ onSuccess, onLogin }: RegisterPageProps) {
               />
               {errors.email && (
                 <span className="field-error visible">{errors.email}</span>
+              )}
+            </div>
+
+            <div className="field">
+              <label htmlFor="phone">Phone number</label>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                placeholder="(555) 555-5555"
+                value={form.phone}
+                onChange={handleChange}
+                className={errors.phone ? "has-error" : ""}
+                autoComplete="tel"
+              />
+              {errors.phone && (
+                <span className="field-error visible">{errors.phone}</span>
               )}
             </div>
 

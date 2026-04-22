@@ -1,14 +1,12 @@
 import emailjs from "@emailjs/browser";
 
-// ── EmailJS Config ───────────────────────────────────────────
 const SERVICE_ID = "service_ytjt17j";
 const TEMPLATE_ID = "template_o9zuo5c";
 const PUBLIC_KEY = "z0ySDWBdSIT8_i47V";
 
-// ── Types ────────────────────────────────────────────────────
-
 export interface ForgotPasswordData {
-  email: string;
+  identifier: string;
+  method: "email" | "sms";
 }
 
 export interface VerifyOTPData {
@@ -28,15 +26,17 @@ export interface ForgotPasswordResult {
   message: string;
 }
 
-// ── Mock OTP Store ───────────────────────────────────────────
-// In production this lives on the server, never in the browser.
-const otpStore: Record<string, string> = {};
-
-// ── Validation ───────────────────────────────────────────────
+import { getOTPs, saveOTPs, getUsers, saveUsers } from "./storage.controller";
 
 export function validateEmail(email: string): string | null {
   if (!email.trim()) return "Email is required";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Enter a valid email";
+  return null;
+}
+
+export function validatePhone(phone: string): string | null {
+  if (!phone.trim()) return "Phone number is required";
+  if (!/^\d{10}$/.test(phone.replace(/\D/g, ''))) return "Enter a valid 10-digit phone number";
   return null;
 }
 
@@ -57,19 +57,36 @@ export function validateNewPassword(password: string): string | null {
 export async function handleForgotPassword(
   data: ForgotPasswordData,
 ): Promise<ForgotPasswordResult> {
-  const emailError = validateEmail(data.email);
-  if (emailError) return { success: false, message: emailError };
+  if (data.method === "email") {
+    const emailError = validateEmail(data.identifier);
+    if (emailError) return { success: false, message: emailError };
+  } else {
+    const phoneError = validatePhone(data.identifier);
+    if (phoneError) return { success: false, message: phoneError };
+  }
 
   // Generate 6-digit OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  otpStore[data.email] = otp;
+  
+  // Save OTP in localStorage DB
+  const otps = getOTPs();
+  otps[data.identifier] = { code: otp, expiresAt: Date.now() + 5 * 60 * 1000 };
+  saveOTPs(otps);
+
+  if (data.method === "sms") {
+    // Simulate SMS via browser alert
+    setTimeout(() => {
+      alert(`[New Text Message]\n\nFreelance.dev OTP code: ${otp}`);
+    }, 500);
+    return { success: true, message: "OTP sent via SMS!" };
+  }
 
   try {
     await emailjs.send(
       SERVICE_ID,
       TEMPLATE_ID,
       {
-        to_email: data.email,
+        to_email: data.identifier,
         otp: otp,
       },
       PUBLIC_KEY,
@@ -94,16 +111,17 @@ export async function handleVerifyOTP(
   const otpError = validateOTP(data.otp);
   if (otpError) return { success: false, message: otpError };
 
-  const storedOTP = otpStore[data.email];
+  const otps = getOTPs();
+  const storedOTP = otps[data.email];
 
-  if (!storedOTP) {
+  if (!storedOTP || Date.now() > storedOTP.expiresAt) {
     return {
       success: false,
       message: "OTP expired. Please request a new one.",
     };
   }
 
-  if (storedOTP !== data.otp) {
+  if (storedOTP.code !== data.otp) {
     return { success: false, message: "Incorrect OTP. Please try again." };
   }
 
@@ -120,13 +138,29 @@ export async function handleResetPassword(
     return { success: false, message: "Passwords do not match" };
   }
 
-  const storedOTP = otpStore[data.email];
-  if (!storedOTP || storedOTP !== data.otp) {
+  const otps = getOTPs();
+  const storedOTP = otps[data.email];
+  if (!storedOTP || storedOTP.code !== data.otp) {
     return { success: false, message: "Invalid session. Please start again." };
   }
 
-  // In production: await updatePassword(data.email, data.newPassword)
-  delete otpStore[data.email];
+  // Update password in localStorage db
+  const users = getUsers();
+  // Find user by email or phone (since identifier could be either)
+  let foundUserKey = data.email;
+  if (!users[foundUserKey]) {
+    // Try to find by phone
+    foundUserKey = Object.keys(users).find(k => users[k].phone === data.email) || "";
+  }
+  
+  if (foundUserKey && users[foundUserKey]) {
+    users[foundUserKey].password = data.newPassword;
+    saveUsers(users);
+  }
+
+  // Delete used OTP
+  delete otps[data.email];
+  saveOTPs(otps);
 
   return {
     success: true,

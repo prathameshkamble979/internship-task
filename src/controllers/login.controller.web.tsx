@@ -6,6 +6,7 @@ export interface LoginFormData {
 export interface RegisterFormData {
   name: string;
   email: string;
+  phone: string;
   password: string;
   confirmPassword: string;
 }
@@ -28,6 +29,12 @@ export function validatePassword(password: string): string | null {
   return null;
 }
 
+export function validatePhone(phone: string): string | null {
+  if (!phone.trim()) return "Phone number is required";
+  if (!/^\d{10}$/.test(phone.replace(/\D/g, ''))) return "Enter a valid 10-digit phone number";
+  return null;
+}
+
 export function validateLoginForm(data: LoginFormData): Record<string, string> {
   const errors: Record<string, string> = {};
   const emailError = validateEmail(data.email);
@@ -43,8 +50,11 @@ export function validateRegisterForm(
   const errors: Record<string, string> = {};
   if (!data.name.trim()) errors.name = "Full name is required";
   const emailError = validateEmail(data.email);
+  const phoneError = validatePhone(data.phone);
   const passwordError = validatePassword(data.password);
+  
   if (emailError) errors.email = emailError;
+  if (phoneError) errors.phone = phoneError;
   if (passwordError) errors.password = passwordError;
   if (!data.confirmPassword)
     errors.confirmPassword = "Please confirm your password";
@@ -53,9 +63,8 @@ export function validateRegisterForm(
   return errors;
 }
 
-// ── Mock User Store ────────────────────────────────────────────
-// In production this lives on the server, never in the browser.
-const mockUsers: Record<string, RegisterFormData> = {};
+// Import storage helpers
+import { getUsers, saveUsers, setActiveSession } from "./storage.controller";
 
 export async function handleLogin(data: LoginFormData): Promise<AuthResult> {
   const errors = validateLoginForm(data);
@@ -66,10 +75,15 @@ export async function handleLogin(data: LoginFormData): Promise<AuthResult> {
   // Simulate network delay
   await new Promise((resolve) => setTimeout(resolve, 800));
 
-  const user = mockUsers[data.email];
+  const users = getUsers();
+  const user = users[data.email];
+
   if (!user || user.password !== data.password) {
     return { success: false, message: "Invalid email or password. Please check your credentials." };
   }
+
+  // Save the logged in session
+  setActiveSession(user);
 
   return {
     success: true,
@@ -89,17 +103,20 @@ export async function handleRegister(
   // Simulate network delay
   await new Promise((resolve) => setTimeout(resolve, 800));
 
-  if (mockUsers[data.email]) {
+  const users = getUsers();
+
+  if (users[data.email]) {
     return { success: false, message: "Email is already registered. Please login instead." };
   }
 
-  // Save to mock database
-  mockUsers[data.email] = {
+  // Save to localeStorage database
+  users[data.email] = {
     name: data.name,
     email: data.email,
-    password: data.password,
-    confirmPassword: data.confirmPassword, // Store temporarily to match type
+    phone: data.phone,
+    password: data.password, // Storing password raw for prototype purposes only
   };
+  saveUsers(users);
 
   return {
     success: true,

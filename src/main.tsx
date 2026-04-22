@@ -5,13 +5,15 @@ import { RegisterPage } from "./views/register.web";
 import { ForgotPasswordPage } from "./views/forget-password.web";
 import { VerifyOTPPage } from "./views/verify-otp.web";
 import { ResetPasswordPage } from "./views/reset-password.web";
+import { DashboardPage } from "./views/dashboard.web";
 
 type Page =
   | "login"
   | "register"
   | "forgot-password"
   | "verify-otp"
-  | "reset-password";
+  | "reset-password"
+  | "dashboard";
 
 // eslint-disable-next-line react-refresh/only-export-components
 function App() {
@@ -69,9 +71,15 @@ function App() {
     );
   }
 
+  if (page === "dashboard") {
+    return (
+      <DashboardPage onLogout={() => setPage("login")} />
+    );
+  }
+
   return (
     <LoginPage
-      onSuccess={() => alert("Login successful!")}
+      onSuccess={() => setPage("dashboard")}
       onRegister={() => setPage("register")}
       onForgotPassword={() => setPage("forgot-password")}
     />

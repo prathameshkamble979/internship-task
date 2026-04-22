@@ -15,7 +15,8 @@ export function ForgotPasswordPage({
   onBack,
 }: ForgotPasswordPageProps) {
   const [email, setEmail] = useState("");
-  const [emailError, setEmailError] = useState("");
+  const [method, setMethod] = useState<"email" | "sms">("email");
+  const [inputError, setInputError] = useState("");
   const [alert, setAlert] = useState<{
     type: "error" | "success";
     message: string;
@@ -25,23 +26,18 @@ export function ForgotPasswordPage({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setAlert(null);
-    setEmailError("");
-
-    const error = validateEmail(email);
-    if (error) {
-      setEmailError(error);
-      return;
-    }
+    setInputError("");
 
     setLoading(true);
-    const result = await handleForgotPassword({ email });
+    const result = await handleForgotPassword({ identifier: email, method });
     setLoading(false);
 
     if (result.success) {
       setAlert({ type: "success", message: result.message });
-      setTimeout(() => onOTPSent(email), 1500);
+      setTimeout(() => onOTPSent(email), 1500); // we still pass identifier out as onOTPSent argument
     } else {
       setAlert({ type: "error", message: result.message });
+      setInputError(result.message);
     }
   }
 
@@ -62,23 +58,40 @@ export function ForgotPasswordPage({
           )}
 
           <form onSubmit={handleSubmit}>
+            <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem" }}>
+              <button 
+                type="button" 
+                onClick={() => setMethod("email")}
+                style={{ flex: 1, padding: "0.5rem", borderRadius: "8px", border: method === "email" ? "2px solid var(--primary-color)" : "1px solid var(--border-color)", background: "transparent", cursor: "pointer" }}
+              >
+                Send to Email
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setMethod("sms")}
+                style={{ flex: 1, padding: "0.5rem", borderRadius: "8px", border: method === "sms" ? "2px solid var(--primary-color)" : "1px solid var(--border-color)", background: "transparent", cursor: "pointer" }}
+              >
+                Send via SMS
+              </button>
+            </div>
+
             <div className="field">
-              <label htmlFor="email">Email address</label>
+              <label htmlFor="identifier">{method === "email" ? "Email address" : "Phone number"}</label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="you@example.com"
+                id="identifier"
+                name="identifier"
+                type={method === "email" ? "email" : "tel"}
+                placeholder={method === "email" ? "you@example.com" : "(555) 555-5555"}
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
-                  setEmailError("");
+                  setInputError("");
                 }}
-                className={emailError ? "has-error" : ""}
-                autoComplete="email"
+                className={inputError ? "has-error" : ""}
+                autoComplete={method === "email" ? "email" : "tel"}
               />
-              {emailError && (
-                <span className="field-error visible">{emailError}</span>
+              {inputError && (
+                <span className="field-error visible">{inputError}</span>
               )}
             </div>
 
