@@ -121,7 +121,10 @@ export function ResetPasswordPage({
           </form>
 
           <p className="form-footer">
-            Remember your password? <a onClick={onBack}>Back to sign in</a>
+            Remember your password?{" "}
+            <a href="#" onClick={(e) => { e.preventDefault(); onBack(); }}>
+              Back to sign in
+            </a>
           </p>
         </div>
       </div>

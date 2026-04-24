@@ -92,7 +92,10 @@ export function VerifyOTPPage({
           </form>
 
           <p className="form-footer">
-            Didn't receive the code? <a onClick={onBack}>Resend OTP</a>
+            Didn't receive the code?{" "}
+            <a href="#" onClick={(e) => { e.preventDefault(); onBack(); }}>
+              Resend OTP
+            </a>
           </p>
         </div>
       </div>

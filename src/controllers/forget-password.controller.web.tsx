@@ -57,12 +57,21 @@ export function validateNewPassword(password: string): string | null {
 export async function handleForgotPassword(
   data: ForgotPasswordData,
 ): Promise<ForgotPasswordResult> {
-  if (data.method === "email") {
+  const isEmail = data.identifier.includes('@');
+  
+  if (isEmail) {
     const emailError = validateEmail(data.identifier);
     if (emailError) return { success: false, message: emailError };
   } else {
     const phoneError = validatePhone(data.identifier);
     if (phoneError) return { success: false, message: phoneError };
+  }
+
+  const users = getUsers();
+  const user = Object.values(users).find(u => u.email === data.identifier || u.phone === data.identifier.replace(/\D/g, '').slice(-10) || u.phone === data.identifier.replace(/[\s-]/g, ''));
+  
+  if (!user) {
+    return { success: false, message: "No account found with this information." };
   }
 
   // Generate 6-digit OTP
@@ -74,34 +83,77 @@ export async function handleForgotPassword(
   saveOTPs(otps);
 
   if (data.method === "sms") {
-    // Simulate SMS via browser alert
-    setTimeout(() => {
-      alert(`[New Text Message]\n\nFreelance.dev OTP code: ${otp}`);
-    }, 500);
-    return { success: true, message: "OTP sent via SMS!" };
-  }
+    try {
+      const accountSid = import.meta.env.VITE_TWILIO_SID;
+      const authToken = import.meta.env.VITE_TWILIO_AUTH_TOKEN;
+      const twilioNumber = import.meta.env.VITE_TWILIO_PHONE_NUMBER;
+      
+      const formData = new URLSearchParams();
+      // Ensure number has country code for Twilio
+      const formattedPhone = user.phone.startsWith("+") ? user.phone : `+91${user.phone}`;
+      formData.append("To", formattedPhone);
+      formData.append("From", twilioNumber);
+      formData.append("Body", `Freelance.dev OTP code: ${otp}`);
 
-  try {
-    await emailjs.send(
-      SERVICE_ID,
-      TEMPLATE_ID,
-      {
-        to_email: data.identifier,
-        otp: otp,
-      },
-      PUBLIC_KEY,
-    );
+      const response = await fetch(`/api/twilio/2010-04-01/Accounts/${accountSid}/Messages.json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': 'Basic ' + btoa(accountSid + ':' + authToken)
+        },
+        body: formData.toString()
+      });
+      
+      const resData = await response.json();
+      
+      if (response.ok) {
+        return {
+          success: true,
+          message: "OTP sent via Twilio SMS! Check your phone.",
+        };
+      } else {
+        console.error("Twilio Error:", resData);
+        setTimeout(() => {
+          alert(`[Twilio Error - Simulating]\n[To: ${user.phone}]\nOTP: ${otp}\nReason: ${resData.message}`);
+        }, 500);
+        return {
+          success: true,
+          message: "Twilio error. OTP shown via popup.",
+        };
+      }
+    } catch (error) {
+      console.error("Twilio Network Error:", error);
+      setTimeout(() => {
+        alert(`[Network Error - Simulating]\n[To: ${user.phone}]\nOTP: ${otp}`);
+      }, 500);
+      return {
+        success: true,
+        message: "Network error. OTP shown via popup.",
+      };
+    }
+  } else {
+    try {
+      await emailjs.send(
+        SERVICE_ID,
+        TEMPLATE_ID,
+        {
+          to_email: user.email,
+          otp: otp,
+        },
+        PUBLIC_KEY,
+      );
 
-    return {
-      success: true,
-      message: "OTP sent! Check your email inbox.",
-    };
-  } catch (error) {
-    console.error("EmailJS error:", error);
-    return {
-      success: false,
-      message: "Failed to send OTP. Please try again.",
-    };
+      return {
+        success: true,
+        message: "OTP sent! Check your email inbox.",
+      };
+    } catch (error) {
+      console.error("EmailJS error:", error);
+      return {
+        success: false,
+        message: "Failed to send OTP to email. Please try again.",
+      };
+    }
   }
 }
 

@@ -12,12 +12,12 @@ interface LoginPageProps {
 }
 
 interface FormState {
-  email: string;
+  identifier: string;
   password: string;
 }
 
 interface ErrorState {
-  email: string;
+  identifier: string;
   password: string;
 }
 
@@ -26,13 +26,14 @@ export function LoginPage({
   onRegister,
   onForgotPassword,
 }: LoginPageProps) {
-  const [form, setForm] = useState<FormState>({ email: "", password: "" });
-  const [errors, setErrors] = useState<ErrorState>({ email: "", password: "" });
+  const [form, setForm] = useState<FormState>({ identifier: "", password: "" });
+  const [errors, setErrors] = useState<ErrorState>({ identifier: "", password: "" });
   const [alert, setAlert] = useState<{
     type: "error" | "success";
     message: string;
   } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email");
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
@@ -47,7 +48,7 @@ export function LoginPage({
     const validationErrors = validateLoginForm(form);
     if (Object.keys(validationErrors).length > 0) {
       setErrors({
-        email: validationErrors.email || "",
+        identifier: validationErrors.identifier || "",
         password: validationErrors.password || "",
       });
       return;
@@ -80,20 +81,37 @@ export function LoginPage({
           )}
 
           <form onSubmit={handleSubmit}>
+            <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem" }}>
+              <button 
+                type="button" 
+                onClick={() => { setLoginMethod("email"); setForm(f => ({...f, identifier: ""})); setErrors(e => ({...e, identifier: ""})); }}
+                style={{ flex: 1, padding: "0.5rem", borderRadius: "8px", border: loginMethod === "email" ? "2px solid var(--primary-color)" : "1px solid var(--border-color)", background: "transparent", cursor: "pointer", color: "var(--text-primary)", fontWeight: loginMethod === "email" ? "600" : "400" }}
+              >
+                Use Email
+              </button>
+              <button 
+                type="button" 
+                onClick={() => { setLoginMethod("phone"); setForm(f => ({...f, identifier: ""})); setErrors(e => ({...e, identifier: ""})); }}
+                style={{ flex: 1, padding: "0.5rem", borderRadius: "8px", border: loginMethod === "phone" ? "2px solid var(--primary-color)" : "1px solid var(--border-color)", background: "transparent", cursor: "pointer", color: "var(--text-primary)", fontWeight: loginMethod === "phone" ? "600" : "400" }}
+              >
+                Use Mobile
+              </button>
+            </div>
+
             <div className="field">
-              <label htmlFor="email">Email address</label>
+              <label htmlFor="identifier">{loginMethod === "email" ? "Email Address" : "Mobile Number"}</label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="you@example.com"
-                value={form.email}
+                id="identifier"
+                name="identifier"
+                type={loginMethod === "email" ? "email" : "tel"}
+                placeholder={loginMethod === "email" ? "you@example.com" : "9876543210"}
+                value={form.identifier}
                 onChange={handleChange}
-                className={errors.email ? "has-error" : ""}
-                autoComplete="email"
+                className={errors.identifier ? "has-error" : ""}
+                autoComplete={loginMethod === "email" ? "email" : "tel"}
               />
-              {errors.email && (
-                <span className="field-error visible">{errors.email}</span>
+              {errors.identifier && (
+                <span className="field-error visible">{errors.identifier}</span>
               )}
             </div>
 
@@ -122,7 +140,8 @@ export function LoginPage({
               }}
             >
               <a
-                onClick={onForgotPassword}
+                href="#"
+                onClick={(e) => { e.preventDefault(); onForgotPassword(); }}
                 style={{
                   fontSize: "13px",
                   color: "var(--accent)",
@@ -139,7 +158,10 @@ export function LoginPage({
           </form>
 
           <p className="form-footer">
-            Don't have an account? <a onClick={onRegister}>Create one</a>
+            Don't have an account?{" "}
+            <a href="#" onClick={(e) => { e.preventDefault(); onRegister(); }}>
+              Create one
+            </a>
           </p>
         </div>
       </div>
@@ -147,7 +169,7 @@ export function LoginPage({
       <div className="auth-panel auth-panel--brand">
         <div className="brand-content">
           <h2 className="brand-tagline">
-            Welcome to your
+            Welcome to your{" "}
             <br />
             <em>client portal.</em>
           </h2>

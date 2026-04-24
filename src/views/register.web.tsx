@@ -75,7 +75,9 @@ export function RegisterPage({ onSuccess, onLogin }: RegisterPageProps) {
 
     if (result.success) {
       setAlert({ type: "success", message: result.message });
-      onSuccess();
+      setTimeout(() => {
+        onSuccess();
+      }, 1500);
     } else {
       setAlert({ type: "error", message: result.message });
     }
@@ -102,7 +104,7 @@ export function RegisterPage({ onSuccess, onLogin }: RegisterPageProps) {
                 id="name"
                 name="name"
                 type="text"
-                placeholder="Prathamesh Kamble"
+                placeholder="John Doe"
                 value={form.name}
                 onChange={handleChange}
                 className={errors.name ? "has-error" : ""}
@@ -136,7 +138,7 @@ export function RegisterPage({ onSuccess, onLogin }: RegisterPageProps) {
                 id="phone"
                 name="phone"
                 type="tel"
-                placeholder="(555) 555-5555"
+                placeholder="9876543210"
                 value={form.phone}
                 onChange={handleChange}
                 className={errors.phone ? "has-error" : ""}
@@ -189,7 +191,10 @@ export function RegisterPage({ onSuccess, onLogin }: RegisterPageProps) {
           </form>
 
           <p className="form-footer">
-            Already have an account? <a onClick={onLogin}>Sign in</a>
+            Already have an account?{" "}
+            <a href="#" onClick={(e) => { e.preventDefault(); onLogin(); }}>
+              Sign in
+            </a>
           </p>
         </div>
       </div>

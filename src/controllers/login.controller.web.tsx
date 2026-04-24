@@ -1,5 +1,5 @@
 export interface LoginFormData {
-  email: string;
+  identifier: string;
   password: string;
 }
 
@@ -31,15 +31,23 @@ export function validatePassword(password: string): string | null {
 
 export function validatePhone(phone: string): string | null {
   if (!phone.trim()) return "Phone number is required";
-  if (!/^\d{10}$/.test(phone.replace(/\D/g, ''))) return "Enter a valid 10-digit phone number";
+
+  if (!/^\d{10}$/.test(phone.replace(/\D/g, ''))) {
+    return "Enter a valid 10-digit phone number";
+  }
+  return null;
+}
+
+export function validateIdentifier(identifier: string): string | null {
+  if (!identifier.trim()) return "Identifier (Name, Email, or Phone) is required";
   return null;
 }
 
 export function validateLoginForm(data: LoginFormData): Record<string, string> {
   const errors: Record<string, string> = {};
-  const emailError = validateEmail(data.email);
+  const identifierError = validateIdentifier(data.identifier);
   const passwordError = validatePassword(data.password);
-  if (emailError) errors.email = emailError;
+  if (identifierError) errors.identifier = identifierError;
   if (passwordError) errors.password = passwordError;
   return errors;
 }
@@ -52,7 +60,7 @@ export function validateRegisterForm(
   const emailError = validateEmail(data.email);
   const phoneError = validatePhone(data.phone);
   const passwordError = validatePassword(data.password);
-  
+
   if (emailError) errors.email = emailError;
   if (phoneError) errors.phone = phoneError;
   if (passwordError) errors.password = passwordError;
@@ -76,10 +84,16 @@ export async function handleLogin(data: LoginFormData): Promise<AuthResult> {
   await new Promise((resolve) => setTimeout(resolve, 800));
 
   const users = getUsers();
-  const user = users[data.email];
+  const user = Object.values(users).find(
+    (u) =>
+      u.email.toLowerCase() === data.identifier.toLowerCase() ||
+      u.phone === data.identifier.replace(/\D/g, '').slice(-10) ||
+      u.phone === data.identifier.replace(/[\s-]/g, '') ||
+      u.name.toLowerCase() === data.identifier.toLowerCase()
+  );
 
   if (!user || user.password !== data.password) {
-    return { success: false, message: "Invalid email or password. Please check your credentials." };
+    return { success: false, message: "Invalid credentials. Please check your information." };
   }
 
   // Save the logged in session
@@ -105,8 +119,16 @@ export async function handleRegister(
 
   const users = getUsers();
 
-  if (users[data.email]) {
-    return { success: false, message: "Email is already registered. Please login instead." };
+  // Check if either Email or Phone already exists in the database
+  const emailExists = users[data.email];
+  const phoneExists = Object.values(users).find(u => u.phone === data.phone);
+
+  if (emailExists) {
+    return { success: false, message: "This email address is already registered. Please login." };
+  }
+  
+  if (phoneExists) {
+    return { success: false, message: "This mobile number is already registered. Please login." };
   }
 
   // Save to localeStorage database
